@@ -4,9 +4,9 @@ const IDB_NAME = "LuffyGear5MediaDB";
 const IDB_STORE = "mediaBlobs";
 
 const GEMINI_OVERRIDE_MODELS = [
+  "gemini-3.8-flash",
   "gemini-2.5-flash",
   "gemini-2.5-flash-lite",
-  "gemini-2.0-flash",
 ];
 
 export const LUFFY_SYSTEM_PROMPT = `You are Monkey D. Luffy in Gear 5 (Awakened Sun God Nika form), acting as a super helpful, brilliant AI assistant!

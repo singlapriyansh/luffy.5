@@ -1,8 +1,34 @@
+const fs = require("fs");
+const path = require("path");
+
 const GEMINI_DEFAULT_MODELS = [
+  "gemini-3.8-flash",
   "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
-  "gemini-2.0-flash"
+  "gemini-2.5-flash-lite"
 ];
+
+function readEnvFallback() {
+  const candidates = [
+    path.resolve(__dirname, "..", ".env"),
+    path.resolve(process.cwd(), ".env")
+  ];
+  const parsed = {};
+  for (const envPath of candidates) {
+    if (!fs.existsSync(envPath)) continue;
+    const lines = fs.readFileSync(envPath, "utf8").split(/\r?\n/);
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith("#")) continue;
+      const eqIdx = line.indexOf("=");
+      if (eqIdx === -1) continue;
+      const key = line.slice(0, eqIdx).trim();
+      const val = line.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, "");
+      if (val) parsed[key] = val;
+    }
+    break;
+  }
+  return parsed;
+}
 
 function extractSystemText(systemInstruction) {
   return (systemInstruction?.parts || [])
@@ -53,7 +79,7 @@ async function callGemini({ apiKey, contents, systemInstruction }) {
     };
 
     // Only fall back to the next model when the model itself is unavailable or rate-limited.
-    if (response.status !== 404 && response.status !== 429) {
+    if (response.status !== 404 && response.status !== 400 && response.status !== 429) {
       break;
     }
   }
@@ -145,9 +171,13 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const preferredProvider = (process.env.AI_PROVIDER || "").toLowerCase();
-    const geminiKey = (process.env.GEMINI_API_KEY || "").trim();
-    const xaiKey = (process.env.XAI_API_KEY || "").trim();
+    const envFallback = (!process.env.GEMINI_API_KEY && !process.env.XAI_API_KEY)
+      ? readEnvFallback()
+      : {};
+
+    const preferredProvider = (process.env.AI_PROVIDER || envFallback.AI_PROVIDER || "").toLowerCase();
+    const geminiKey = (process.env.GEMINI_API_KEY || envFallback.GEMINI_API_KEY || "").trim();
+    const xaiKey = (process.env.XAI_API_KEY || envFallback.XAI_API_KEY || "").trim();
 
     let result;
     if (preferredProvider === "xai" && xaiKey) {
